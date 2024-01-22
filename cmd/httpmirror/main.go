@@ -1,16 +1,17 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
-	"errors"
-	"fmt"
 
 	"github.com/wzshiming/httpmirror"
 	"github.com/wzshiming/httpmirror/minio"
+	"github.com/wzshiming/httpseek"
 )
 
 var (
@@ -22,6 +23,7 @@ var (
 	redirectLinks     string
 	hostFromFirstPath bool
 	checkSyncTimeout  time.Duration
+	ContinuationGet   bool
 )
 
 func init() {
@@ -33,6 +35,7 @@ func init() {
 	flag.StringVar(&redirectLinks, "s3-redirect-links", "", "redirect links")
 	flag.BoolVar(&hostFromFirstPath, "host-from-first-path", false, "host from first path")
 	flag.DurationVar(&checkSyncTimeout, "check-sync-timeout", 0, "check sync timeout")
+	flag.BoolVar(&ContinuationGet, "continuation-get", false, "continuation get")
 
 	flag.Parse()
 }
@@ -56,6 +59,15 @@ func main() {
 		client = c
 	}
 
+	var transport http.RoundTripper = http.DefaultTransport
+
+	if ContinuationGet {
+		transport = httpseek.NewMustReaderTransport(transport, func(err error) error {
+			logger.Println("httpseek:", err)
+			return nil
+		})
+	}
+
 	ph := &httpmirror.MirrorHandler{
 		Client: &http.Client{
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -65,9 +77,7 @@ func main() {
 				logger.Println("redirect", req.URL)
 				return nil
 			},
-			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-			},
+			Transport: transport,
 		},
 		Logger:      logger,
 		RemoteCache: client,

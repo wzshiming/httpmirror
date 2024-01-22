@@ -2,6 +2,8 @@ package httpmirror
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -9,8 +11,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"errors"
-	"fmt"
 
 	"github.com/minio/minio-go/v7/pkg/s3utils"
 )
