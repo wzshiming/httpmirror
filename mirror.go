@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 	"errors"
+	"fmt"
 
 	"github.com/minio/minio-go/v7/pkg/s3utils"
 )
@@ -225,6 +226,14 @@ func (m *MirrorHandler) cacheFile(ctx context.Context, key, sourceFile, cacheFil
 		return err
 	}
 
+	if lr, ok := body.(*io.LimitedReader); ok && lr.N != contentLength {
+		baseErr := fmt.Errorf("content length mismatch: %d != %d", lr.N, contentLength)
+		err = m.RemoteCache.Del(ctx, key)
+		if err != nil {
+			return errors.Join(baseErr, err)
+		}
+		return baseErr
+	}
 	return nil
 }
 
